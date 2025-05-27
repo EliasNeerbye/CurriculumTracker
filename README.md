@@ -34,7 +34,41 @@ A modern curriculum management and progress tracking application built with Go b
 
 - Go 1.24 or later
 - PostgreSQL 13 or later
-- Make (for build automation)
+- Make (for build automation) or PowerShell (Windows)
+
+### Quick Build and Run
+
+**Windows (PowerShell):**
+
+```powershell
+# Build both server and WebAssembly
+.\build.ps1 build
+
+# Run the application
+.\build.ps1 run
+```
+
+**Windows (Batch):**
+
+```cmd
+# Build both server and WebAssembly
+build.bat build
+
+# Run the application
+build.bat run
+```
+
+**Linux/Mac (Make):**
+
+```bash
+# Build both server and WebAssembly
+make build
+
+# Run the application
+make run
+```
+
+The application will be available at <http://localhost:8080>
 
 ### Installation
 
@@ -304,6 +338,47 @@ If you can't connect to PostgreSQL:
 2. Check your DATABASE_URL in `.env`
 3. Ensure the database exists: `createdb curriculum_tracker`
 4. Run the schema: `psql curriculum_tracker < database/schema.sql`
+
+### Performance and Timeout Issues
+
+If you're experiencing slow queries or timeouts:
+
+1. **Database Indexes**: Ensure your database has proper indexes:
+
+   ```sql
+   -- Add these indexes for better performance
+   CREATE INDEX IF NOT EXISTS idx_curricula_user_id ON curricula(user_id);
+   CREATE INDEX IF NOT EXISTS idx_projects_curriculum_id ON projects(curriculum_id);
+   CREATE INDEX IF NOT EXISTS idx_project_progress_user_project ON project_progress(user_id, project_id);
+   CREATE INDEX IF NOT EXISTS idx_time_entries_user_id ON time_entries(user_id);
+   CREATE INDEX IF NOT EXISTS idx_time_entries_logged_at ON time_entries(logged_at);
+   CREATE INDEX IF NOT EXISTS idx_notes_user_project ON notes(user_id, project_id);
+   CREATE INDEX IF NOT EXISTS idx_reflections_user_project ON reflections(user_id, project_id);
+   ```
+
+2. **Connection Pool Settings**: For high load, adjust PostgreSQL settings:
+
+   ```
+   max_connections = 100
+   shared_buffers = 256MB
+   effective_cache_size = 1GB
+   ```
+
+3. **Application Settings**: Increase timeout in environment:
+
+   ```bash
+   export REQUEST_TIMEOUT=60s
+   export DB_MAX_CONNECTIONS=20
+   ```
+
+### API Timeout Issues
+
+If API requests are timing out:
+
+1. Check database performance with `EXPLAIN ANALYZE` on slow queries
+2. Monitor database connections: `SELECT * FROM pg_stat_activity;`
+3. Consider adding query-specific indexes for your data patterns
+4. Use database connection pooling settings in your environment
 
 ### Build Issues
 

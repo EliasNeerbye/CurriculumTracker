@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"curriculum-tracker/internal/auth"
 	"curriculum-tracker/internal/database"
@@ -214,8 +215,16 @@ func (h *Handler) GetCurricula(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	curricula, err := h.db.GetCurriculaByUserID(r.Context(), user.ID)
+	// Add timeout context for curricula query
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	curricula, err := h.db.GetCurriculaByUserID(ctx, user.ID)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			h.writeError(w, http.StatusRequestTimeout, "Curricula query timed out")
+			return
+		}
 		h.writeError(w, http.StatusInternalServerError, "Failed to get curricula")
 		return
 	}
@@ -1111,9 +1120,17 @@ func (h *Handler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	analytics, err := h.db.GetAnalytics(r.Context(), user.ID)
+	// Add timeout context for analytics
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	analytics, err := h.db.GetAnalytics(ctx, user.ID)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "Failed to get analytics")
+		if ctx.Err() == context.DeadlineExceeded {
+			h.writeError(w, http.StatusRequestTimeout, "Analytics query timed out")
+			return
+		}
+		h.writeError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get analytics: %v", err))
 		return
 	}
 

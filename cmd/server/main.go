@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"curriculum-tracker/internal/auth"
@@ -41,12 +42,14 @@ func main() {
 	h := handlers.New(db, authConfig)
 
 	r := chi.NewRouter()
-
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Compress(5))
+
+	// Add request timeout middleware
+	r.Use(middleware.Timeout(20 * time.Second))
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
@@ -121,9 +124,43 @@ func main() {
 		})
 	})
 
+	// Serve static files
 	fileServer := http.FileServer(http.Dir("./web/"))
-	r.Handle("/*", fileServer)
+
+	// Handle static assets directly
+	r.Handle("/styles.css", fileServer)
+	r.Handle("/main.wasm", fileServer)
+	r.Handle("/wasm_exec.js", fileServer)
+
+	// For all other routes (SPA routing), serve index.html
+	r.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+		// If it's an API route, it should have been handled above
+		// If it's a static file request that we missed, try serving it
+		// Otherwise, serve index.html for SPA routing
+		path := r.URL.Path
+		if strings.HasPrefix(path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Try to serve the file directly first
+		if strings.Contains(path, ".") {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		// For all other routes, serve index.html to support SPA routing
+		http.ServeFile(w, r, "./web/index.html")
+	})
+	// Configure server with timeouts
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      r,
+		ReadTimeout:  60 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
 
 	log.Printf("Server starting on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, r))
+	log.Fatal(server.ListenAndServe())
 }

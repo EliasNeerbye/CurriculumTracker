@@ -163,4 +163,5 @@ type AnalyticsResponse struct {
 	CompletionByType   map[ProjectType]float64 `json:"completion_by_type"`
 	RecentActivity     []TimeEntry             `json:"recent_activity"`
 	WeeklyTimeSpent    []int                   `json:"weekly_time_spent"`
+	LoadTime           int64                   `json:"load_time_ms,omitempty"`
 }

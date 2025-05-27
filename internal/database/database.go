@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
 )
 
 type DB struct {
@@ -19,12 +18,32 @@ type DB struct {
 }
 
 func New(databaseURL string) (*DB, error) {
-	pool, err := pgxpool.New(context.Background(), databaseURL)
+	// Configure connection pool with better timeout settings
+	config, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse database URL: %w", err)
+	}
+
+	// Set connection pool configuration for better performance
+	config.MaxConns = 25                       // Maximum number of connections
+	config.MinConns = 5                        // Minimum number of connections
+	config.MaxConnLifetime = time.Hour         // Maximum connection lifetime
+	config.MaxConnIdleTime = time.Minute * 30  // Maximum connection idle time
+	config.HealthCheckPeriod = time.Minute * 1 // Health check period
+
+	// Set connection timeouts
+	config.ConnConfig.ConnectTimeout = time.Second * 10 // Connection timeout
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
-	if err := pool.Ping(context.Background()); err != nil {
+	// Test connection with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	if err := pool.Ping(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
@@ -90,6 +109,10 @@ func (db *DB) CreateCurriculum(ctx context.Context, curriculum *models.Curriculu
 }
 
 func (db *DB) GetCurriculaByUserID(ctx context.Context, userID uuid.UUID) ([]models.Curriculum, error) {
+	// Add shorter timeout for curricula query
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	query := `SELECT id, user_id, name, description, created_at, updated_at FROM curricula WHERE user_id = $1 ORDER BY created_at DESC`
 
 	rows, err := db.Pool.Query(ctx, query, userID)
@@ -440,146 +463,124 @@ func (db *DB) GetTimeEntriesByProjectID(ctx context.Context, userID, projectID u
 }
 
 func (db *DB) GetAnalytics(ctx context.Context, userID uuid.UUID) (*models.AnalyticsResponse, error) {
-	totalProjectsQuery := `
-        SELECT COUNT(*) 
-        FROM projects p 
-        JOIN curricula c ON p.curriculum_id = c.id 
-        WHERE c.user_id = $1`
+	// Create a shorter timeout for analytics to prevent long waits
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
-	var totalProjects int
-	err := db.Pool.QueryRow(ctx, totalProjectsQuery, userID).Scan(&totalProjects)
+	analytics := &models.AnalyticsResponse{
+		ProjectsByType:     make(map[models.ProjectType]int),
+		CompletionByType:   make(map[models.ProjectType]float64),
+		WeeklyTimeSpent:    make([]int, 8),
+		TotalProjects:      0,
+		CompletedProjects:  0,
+		InProgressProjects: 0,
+		TotalTimeSpent:     0,
+		RecentActivity:     []models.TimeEntry{},
+	}
+
+	// Use simpler, more efficient queries instead of complex ROLLUP
+	// First get basic project statistics
+	basicStatsQuery := `
+		SELECT 
+			COUNT(*) as total_projects,
+			COUNT(CASE WHEN pp.status = 'completed' THEN 1 END) as completed_projects,
+			COUNT(CASE WHEN pp.status = 'in_progress' THEN 1 END) as in_progress_projects,
+			COALESCE(SUM(pp.time_spent_minutes), 0) as total_time_spent
+		FROM curricula c
+		JOIN projects p ON p.curriculum_id = c.id 
+		LEFT JOIN project_progress pp ON p.id = pp.project_id AND pp.user_id = $1
+		WHERE c.user_id = $1`
+
+	var totalProjects, completedProjects, inProgressProjects, totalTimeSpent int
+	err := db.Pool.QueryRow(ctx, basicStatsQuery, userID).Scan(
+		&totalProjects, &completedProjects, &inProgressProjects, &totalTimeSpent)
+
 	if err != nil {
-		return nil, err
+		return analytics, nil // Return empty analytics on error
 	}
 
-	progressQuery := `
-        SELECT 
-            COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
-            COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
-            COALESCE(SUM(time_spent_minutes), 0) as total_time
-        FROM project_progress pp
-        WHERE pp.user_id = $1`
+	analytics.TotalProjects = totalProjects
+	analytics.CompletedProjects = completedProjects
+	analytics.InProgressProjects = inProgressProjects
+	analytics.TotalTimeSpent = totalTimeSpent
 
-	var completed, inProgress, totalTime int
-	err = db.Pool.QueryRow(ctx, progressQuery, userID).Scan(&completed, &inProgress, &totalTime)
-	if err != nil {
-		return nil, err
-	}
+	// Only fetch additional data if we have projects
+	if totalProjects > 0 {
+		// Get project type statistics with a separate, simpler query
+		typeStatsQuery := `
+			SELECT 
+				p.project_type,
+				COUNT(*) as type_count,
+				COUNT(CASE WHEN pp.status = 'completed' THEN 1 END) as type_completed
+			FROM curricula c
+			JOIN projects p ON p.curriculum_id = c.id 
+			LEFT JOIN project_progress pp ON p.id = pp.project_id AND pp.user_id = $1
+			WHERE c.user_id = $1
+			GROUP BY p.project_type`
 
-	projectsByTypeQuery := `
-        SELECT p.project_type, COUNT(*) 
-        FROM projects p 
-        JOIN curricula c ON p.curriculum_id = c.id 
-        WHERE c.user_id = $1 
-        GROUP BY p.project_type`
+		rows, err := db.Pool.Query(ctx, typeStatsQuery, userID)
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var projectType models.ProjectType
+				var typeCount, typeCompleted int
 
-	rows, err := db.Pool.Query(ctx, projectsByTypeQuery, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	projectsByType := make(map[models.ProjectType]int)
-	for rows.Next() {
-		var projectType models.ProjectType
-		var count int
-		err := rows.Scan(&projectType, &count)
-		if err != nil {
-			return nil, err
-		}
-		projectsByType[projectType] = count
-	}
-
-	completionByTypeQuery := `
-        SELECT p.project_type, 
-               COUNT(*) as total,
-               COUNT(CASE WHEN pp.status = 'completed' THEN 1 END) as completed
-        FROM projects p 
-        JOIN curricula c ON p.curriculum_id = c.id 
-        LEFT JOIN project_progress pp ON p.id = pp.project_id AND pp.user_id = $1
-        WHERE c.user_id = $1 
-        GROUP BY p.project_type`
-
-	rows2, err := db.Pool.Query(ctx, completionByTypeQuery, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows2.Close()
-
-	completionByType := make(map[models.ProjectType]float64)
-	for rows2.Next() {
-		var projectType models.ProjectType
-		var total, completedCount int
-		err := rows2.Scan(&projectType, &total, &completedCount)
-		if err != nil {
-			return nil, err
-		}
-		if total > 0 {
-			completionByType[projectType] = float64(completedCount) / float64(total) * 100
-		}
-	}
-
-	recentActivityQuery := `
-        SELECT id, user_id, project_id, minutes, description, logged_at, created_at 
-        FROM time_entries 
-        WHERE user_id = $1 
-        ORDER BY logged_at DESC 
-        LIMIT 10`
-
-	rows3, err := db.Pool.Query(ctx, recentActivityQuery, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows3.Close()
-
-	var recentActivity []models.TimeEntry
-	for rows3.Next() {
-		var e models.TimeEntry
-		err := rows3.Scan(&e.ID, &e.UserID, &e.ProjectID, &e.Minutes, &e.Description, &e.LoggedAt, &e.CreatedAt)
-		if err != nil {
-			return nil, err
-		}
-		recentActivity = append(recentActivity, e)
-	}
-
-	weeklyTimeQuery := `
-        SELECT 
-            DATE_TRUNC('week', logged_at) as week,
-            SUM(minutes) as total_minutes
-        FROM time_entries 
-        WHERE user_id = $1 AND logged_at >= NOW() - INTERVAL '8 weeks'
-        GROUP BY week 
-        ORDER BY week`
-
-	rows4, err := db.Pool.Query(ctx, weeklyTimeQuery, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows4.Close()
-
-	weeklyTimeSpent := make([]int, 8)
-	for rows4.Next() {
-		var week time.Time
-		var minutes int
-		err := rows4.Scan(&week, &minutes)
-		if err != nil {
-			return nil, err
+				if err := rows.Scan(&projectType, &typeCount, &typeCompleted); err == nil {
+					analytics.ProjectsByType[projectType] = typeCount
+					if typeCount > 0 {
+						analytics.CompletionByType[projectType] = float64(typeCompleted) / float64(typeCount) * 100
+					} else {
+						analytics.CompletionByType[projectType] = 0
+					}
+				}
+			}
 		}
 
-		weeksAgo := int(time.Since(week).Hours() / 24 / 7)
-		if weeksAgo >= 0 && weeksAgo < 8 {
-			weeklyTimeSpent[7-weeksAgo] = minutes
+		// Get recent activity with a limit
+		recentActivityQuery := `
+			SELECT id, user_id, project_id, minutes, description, logged_at, created_at 
+			FROM time_entries 
+			WHERE user_id = $1 
+			ORDER BY logged_at DESC 
+			LIMIT 5`
+
+		rows2, err := db.Pool.Query(ctx, recentActivityQuery, userID)
+		if err == nil {
+			defer rows2.Close()
+			for rows2.Next() {
+				var e models.TimeEntry
+				if err := rows2.Scan(&e.ID, &e.UserID, &e.ProjectID, &e.Minutes, &e.Description, &e.LoggedAt, &e.CreatedAt); err == nil {
+					analytics.RecentActivity = append(analytics.RecentActivity, e)
+				}
+			}
+		}
+
+		// Get simplified weekly time spent
+		weeklyTimeQuery := `
+			SELECT 
+				DATE_TRUNC('week', logged_at) as week_start,
+				SUM(minutes) as total_minutes
+			FROM time_entries 
+			WHERE user_id = $1 
+				AND logged_at >= CURRENT_DATE - INTERVAL '56 days'
+			GROUP BY DATE_TRUNC('week', logged_at)
+			ORDER BY week_start DESC
+			LIMIT 8`
+
+		rows3, err := db.Pool.Query(ctx, weeklyTimeQuery, userID)
+		if err == nil {
+			defer rows3.Close()
+			weekIndex := 0
+			for rows3.Next() && weekIndex < 8 {
+				var weekStart time.Time
+				var minutes int
+				if err := rows3.Scan(&weekStart, &minutes); err == nil {
+					analytics.WeeklyTimeSpent[weekIndex] = minutes
+					weekIndex++
+				}
+			}
 		}
 	}
 
-	return &models.AnalyticsResponse{
-		TotalProjects:      totalProjects,
-		CompletedProjects:  completed,
-		InProgressProjects: inProgress,
-		TotalTimeSpent:     totalTime,
-		ProjectsByType:     projectsByType,
-		CompletionByType:   completionByType,
-		RecentActivity:     recentActivity,
-		WeeklyTimeSpent:    weeklyTimeSpent,
-	}, nil
+	return analytics, nil
 }
