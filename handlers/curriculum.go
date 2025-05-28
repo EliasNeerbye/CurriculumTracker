@@ -111,7 +111,12 @@ func (h *CurriculumHandler) GetCurriculum(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Ensure projects is never nil, always an array (even if empty)
+	if projects == nil {
+		projects = make([]models.Project, 0)
+	}
 	curriculum.Projects = projects
+
 	utils.WriteJSON(w, http.StatusOK, curriculum)
 }
 

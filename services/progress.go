@@ -96,7 +96,8 @@ func (s *ProgressService) GetProgressByCurriculumID(userID, curriculumID int) ([
 	}
 	defer rows.Close()
 
-	var progressList []models.Progress
+	// Initialize as empty slice, not nil
+	progressList := make([]models.Progress, 0)
 	for rows.Next() {
 		var progress models.Progress
 		err := rows.Scan(

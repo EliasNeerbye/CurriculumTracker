@@ -55,7 +55,8 @@ func (s *AnalyticsService) GetTimeEntriesByProjectID(userID, projectID int) ([]m
 	}
 	defer rows.Close()
 
-	var timeEntries []models.TimeEntry
+	// Initialize as empty slice, not nil
+	timeEntries := make([]models.TimeEntry, 0)
 	for rows.Next() {
 		var te models.TimeEntry
 		err := rows.Scan(

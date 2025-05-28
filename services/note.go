@@ -49,7 +49,8 @@ func (s *NoteService) GetNotesByProjectID(userID, projectID int) ([]models.Note,
 	}
 	defer rows.Close()
 
-	var notes []models.Note
+	// Initialize as empty slice, not nil
+	notes := make([]models.Note, 0)
 	for rows.Next() {
 		var note models.Note
 		err := rows.Scan(

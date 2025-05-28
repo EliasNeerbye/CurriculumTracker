@@ -2,18 +2,19 @@ package models
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type StringArray []string
 
 func (a StringArray) Value() (driver.Value, error) {
 	if len(a) == 0 {
-		return "{}", nil
+		return pq.Array([]string{}), nil
 	}
-	return json.Marshal(a)
+	return pq.Array([]string(a)), nil
 }
 
 func (a *StringArray) Scan(value interface{}) error {
@@ -21,14 +22,16 @@ func (a *StringArray) Scan(value interface{}) error {
 		*a = StringArray{}
 		return nil
 	}
-	switch v := value.(type) {
-	case []byte:
-		return json.Unmarshal(v, a)
-	case string:
-		return json.Unmarshal([]byte(v), a)
-	default:
-		return fmt.Errorf("cannot scan %T into StringArray", value)
+
+	// Use pq.Array to scan the PostgreSQL array
+	var temp []string
+	err := pq.Array(&temp).Scan(value)
+	if err != nil {
+		return fmt.Errorf("cannot scan %T into StringArray: %w", value, err)
 	}
+
+	*a = StringArray(temp)
+	return nil
 }
 
 type Project struct {

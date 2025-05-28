@@ -55,7 +55,8 @@ func (s *CurriculumService) GetCurriculumsByUserID(userID int) ([]models.Curricu
 	}
 	defer rows.Close()
 
-	var curricula []models.CurriculumWithStats
+	// Initialize as empty slice, not nil
+	curricula := make([]models.CurriculumWithStats, 0)
 	for rows.Next() {
 		var c models.CurriculumWithStats
 		err := rows.Scan(

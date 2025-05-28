@@ -11,7 +11,13 @@ type Curriculum struct {
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-	Projects    []Project `json:"projects,omitempty"`
+	Projects    []Project `json:"projects"`
+}
+
+func NewCurriculum() *Curriculum {
+	return &Curriculum{
+		Projects: make([]Project, 0), // Initialize as empty array
+	}
 }
 
 type CreateCurriculumRequest struct {

@@ -28,8 +28,8 @@ func (s *ProjectService) CreateProject(curriculumID int, req models.CreateProjec
 		pq.Array(req.LearningObjectives), req.EstimatedTime, pq.Array(req.Prerequisites),
 		req.ProjectType, req.PositionOrder).Scan(
 		&project.ID, &project.CurriculumID, &project.Identifier, &project.Name,
-		&project.Description, pq.Array(&project.LearningObjectives), &project.EstimatedTime,
-		pq.Array(&project.Prerequisites), &project.ProjectType, &project.PositionOrder,
+		&project.Description, &project.LearningObjectives, &project.EstimatedTime,
+		&project.Prerequisites, &project.ProjectType, &project.PositionOrder,
 		&project.CreatedAt, &project.UpdatedAt,
 	)
 	if err != nil {
@@ -60,26 +60,38 @@ func (s *ProjectService) GetProjectsByCurriculumID(userID, curriculumID int) ([]
 	}
 	defer rows.Close()
 
-	var projects []models.Project
+	// Initialize as empty slice, not nil
+	projects := make([]models.Project, 0)
 	for rows.Next() {
 		var p models.Project
-		var progress models.Progress
-		var progressID sql.NullInt64
+		var progressID, progressUserID, progressProjectID, progressCompletionPercentage sql.NullInt64
+		var progressStatus sql.NullString
+		var progressStartedAt, progressCompletedAt, progressCreatedAt, progressUpdatedAt sql.NullTime
 
 		err := rows.Scan(
 			&p.ID, &p.CurriculumID, &p.Identifier, &p.Name, &p.Description,
-			pq.Array(&p.LearningObjectives), &p.EstimatedTime, pq.Array(&p.Prerequisites),
+			&p.LearningObjectives, &p.EstimatedTime, &p.Prerequisites,
 			&p.ProjectType, &p.PositionOrder, &p.CreatedAt, &p.UpdatedAt,
-			&progressID, &progress.UserID, &progress.ProjectID, &progress.Status,
-			&progress.CompletionPercentage, &progress.StartedAt, &progress.CompletedAt,
-			&progress.CreatedAt, &progress.UpdatedAt,
+			&progressID, &progressUserID, &progressProjectID, &progressStatus,
+			&progressCompletionPercentage, &progressStartedAt, &progressCompletedAt,
+			&progressCreatedAt, &progressUpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan project: %w", err)
 		}
 
 		if progressID.Valid {
-			progress.ID = int(progressID.Int64)
+			progress := models.Progress{
+				ID:                   int(progressID.Int64),
+				UserID:               int(progressUserID.Int64),
+				ProjectID:            int(progressProjectID.Int64),
+				Status:               progressStatus.String,
+				CompletionPercentage: int(progressCompletionPercentage.Int64),
+				StartedAt:            progressStartedAt,
+				CompletedAt:          progressCompletedAt,
+				CreatedAt:            progressCreatedAt.Time,
+				UpdatedAt:            progressUpdatedAt.Time,
+			}
 			p.Progress = &progress
 		}
 
@@ -103,8 +115,8 @@ func (s *ProjectService) GetProjectByID(userID, projectID int) (*models.Project,
 	var project models.Project
 	err := s.db.QueryRow(query, projectID, userID).Scan(
 		&project.ID, &project.CurriculumID, &project.Identifier, &project.Name,
-		&project.Description, pq.Array(&project.LearningObjectives), &project.EstimatedTime,
-		pq.Array(&project.Prerequisites), &project.ProjectType, &project.PositionOrder,
+		&project.Description, &project.LearningObjectives, &project.EstimatedTime,
+		&project.Prerequisites, &project.ProjectType, &project.PositionOrder,
 		&project.CreatedAt, &project.UpdatedAt,
 	)
 	if err != nil {
@@ -136,8 +148,8 @@ func (s *ProjectService) UpdateProject(userID, projectID int, req models.UpdateP
 		pq.Array(req.LearningObjectives), req.EstimatedTime, pq.Array(req.Prerequisites),
 		req.ProjectType, req.PositionOrder, projectID, userID).Scan(
 		&project.ID, &project.CurriculumID, &project.Identifier, &project.Name,
-		&project.Description, pq.Array(&project.LearningObjectives), &project.EstimatedTime,
-		pq.Array(&project.Prerequisites), &project.ProjectType, &project.PositionOrder,
+		&project.Description, &project.LearningObjectives, &project.EstimatedTime,
+		&project.Prerequisites, &project.ProjectType, &project.PositionOrder,
 		&project.CreatedAt, &project.UpdatedAt,
 	)
 	if err != nil {
