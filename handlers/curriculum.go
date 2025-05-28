@@ -5,6 +5,7 @@ import (
 	"curriculum-tracker/models"
 	"curriculum-tracker/services"
 	"curriculum-tracker/utils"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -48,6 +49,7 @@ func (h *CurriculumHandler) CreateCurriculum(w http.ResponseWriter, r *http.Requ
 
 	curriculum, err := h.curriculumService.CreateCurriculum(userID, req)
 	if err != nil {
+		log.Printf("error creating curriculum: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to create curriculum")
 		return
 	}
@@ -69,6 +71,7 @@ func (h *CurriculumHandler) GetCurricula(w http.ResponseWriter, r *http.Request)
 
 	curricula, err := h.curriculumService.GetCurriculumsByUserID(userID)
 	if err != nil {
+		log.Printf("error getting curricula: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch curricula")
 		return
 	}
@@ -103,6 +106,7 @@ func (h *CurriculumHandler) GetCurriculum(w http.ResponseWriter, r *http.Request
 
 	projects, err := h.projectService.GetProjectsByCurriculumID(userID, curriculumID)
 	if err != nil {
+		log.Printf("error getting projects: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch projects")
 		return
 	}

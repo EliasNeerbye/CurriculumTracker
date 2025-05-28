@@ -14,6 +14,12 @@ const UserIDKey contextKey = "userID"
 func Auth(jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Let OPTIONS requests through
+			if r.Method == http.MethodOptions {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				utils.WriteError(w, http.StatusUnauthorized, "Authorization header required")

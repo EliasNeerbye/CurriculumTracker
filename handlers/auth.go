@@ -6,6 +6,7 @@ import (
 	"curriculum-tracker/models"
 	"curriculum-tracker/services"
 	"curriculum-tracker/utils"
+	"log"
 	"net/http"
 )
 
@@ -46,6 +47,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	token, err := utils.GenerateToken(user.ID, user.Email, h.config.JWTSecret, h.config.TokenDuration)
 	if err != nil {
+		log.Printf("error generating token: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
@@ -83,6 +85,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := utils.GenerateToken(user.ID, user.Email, h.config.JWTSecret, h.config.TokenDuration)
 	if err != nil {
+		log.Printf("error generating token: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}

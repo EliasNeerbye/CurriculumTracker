@@ -5,6 +5,7 @@ import (
 	"curriculum-tracker/models"
 	"curriculum-tracker/services"
 	"curriculum-tracker/utils"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -79,6 +80,7 @@ func (h *AnalyticsHandler) GetProjectTimeEntries(w http.ResponseWriter, r *http.
 
 	timeEntries, err := h.analyticsService.GetTimeEntriesByProjectID(userID, projectID)
 	if err != nil {
+		log.Printf("error getting time entries: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch time entries")
 		return
 	}
@@ -107,6 +109,7 @@ func (h *AnalyticsHandler) GetCurriculumTimeStats(w http.ResponseWriter, r *http
 
 	stats, err := h.analyticsService.GetTimeStatsByCurriculumID(userID, curriculumID)
 	if err != nil {
+		log.Printf("error getting time stats: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch time stats")
 		return
 	}
@@ -128,6 +131,7 @@ func (h *AnalyticsHandler) GetUserStats(w http.ResponseWriter, r *http.Request) 
 
 	stats, err := h.analyticsService.GetUserOverallStats(userID)
 	if err != nil {
+		log.Printf("error getting user stats: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch user stats")
 		return
 	}

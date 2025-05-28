@@ -5,6 +5,7 @@ import (
 	"curriculum-tracker/models"
 	"curriculum-tracker/services"
 	"curriculum-tracker/utils"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -71,6 +72,7 @@ func (h *ProgressHandler) UpdateProgress(w http.ResponseWriter, r *http.Request)
 
 	progress, err := h.progressService.UpdateProgress(userID, projectID, req)
 	if err != nil {
+		log.Printf("error updating progress: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to update progress")
 		return
 	}
@@ -127,6 +129,7 @@ func (h *ProgressHandler) GetCurriculumProgress(w http.ResponseWriter, r *http.R
 
 	progressList, err := h.progressService.GetProgressByCurriculumID(userID, curriculumID)
 	if err != nil {
+		log.Printf("error getting progress: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch progress")
 		return
 	}

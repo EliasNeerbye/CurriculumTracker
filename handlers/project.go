@@ -5,6 +5,7 @@ import (
 	"curriculum-tracker/models"
 	"curriculum-tracker/services"
 	"curriculum-tracker/utils"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -55,6 +56,7 @@ func (h *ProjectHandler) CreateProject(w http.ResponseWriter, r *http.Request) {
 
 	project, err := h.projectService.CreateProject(curriculumID, req)
 	if err != nil {
+		log.Printf("error creating project: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to create project")
 		return
 	}
@@ -178,6 +180,7 @@ func (h *ProjectHandler) GetProjectNotes(w http.ResponseWriter, r *http.Request)
 
 	notes, err := h.noteService.GetNotesByProjectID(userID, projectID)
 	if err != nil {
+		log.Printf("error getting notes: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to fetch notes")
 		return
 	}

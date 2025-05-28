@@ -5,6 +5,7 @@ import (
 	"curriculum-tracker/models"
 	"curriculum-tracker/services"
 	"curriculum-tracker/utils"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -69,6 +70,7 @@ func (h *NoteHandler) CreateNote(w http.ResponseWriter, r *http.Request) {
 
 	note, err := h.noteService.CreateNote(userID, projectID, req)
 	if err != nil {
+		log.Printf("error creating note: %v", err)
 		utils.WriteError(w, http.StatusInternalServerError, "Failed to create note")
 		return
 	}
