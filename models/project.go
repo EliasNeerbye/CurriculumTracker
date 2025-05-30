@@ -23,7 +23,6 @@ func (a *StringArray) Scan(value interface{}) error {
 		return nil
 	}
 
-	// Use pq.Array to scan the PostgreSQL array
 	var temp []string
 	err := pq.Array(&temp).Scan(value)
 	if err != nil {
@@ -51,7 +50,6 @@ type Project struct {
 }
 
 type CreateProjectRequest struct {
-	Identifier         string      `json:"identifier"`
 	Name               string      `json:"name"`
 	Description        string      `json:"description"`
 	LearningObjectives StringArray `json:"learning_objectives"`
@@ -62,7 +60,6 @@ type CreateProjectRequest struct {
 }
 
 type UpdateProjectRequest struct {
-	Identifier         string      `json:"identifier"`
 	Name               string      `json:"name"`
 	Description        string      `json:"description"`
 	LearningObjectives StringArray `json:"learning_objectives"`
