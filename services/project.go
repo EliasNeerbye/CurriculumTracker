@@ -17,20 +17,82 @@ func NewProjectService(db *sql.DB) *ProjectService {
 	return &ProjectService{db: db}
 }
 
-func (s *ProjectService) generateIdentifier(curriculumID int) (string, error) {
+func (s *ProjectService) generateIdentifier(curriculumID int, projectType string) (string, error) {
+	switch projectType {
+	case models.ProjectTypeRoot:
+		return s.generateSequentialIdentifier(curriculumID, projectType, "R")
+	case models.ProjectTypeRootTest:
+		return s.generateTestIdentifier(curriculumID, projectType, "RT")
+	case models.ProjectTypeBase:
+		return s.generateSequentialIdentifier(curriculumID, projectType, "B")
+	case models.ProjectTypeBaseTest:
+		return s.generateTestIdentifier(curriculumID, projectType, "BT")
+	case models.ProjectTypeLowerBranch:
+		return s.generateBranchIdentifier(curriculumID, projectType, "LB")
+	case models.ProjectTypeMiddleBranch:
+		return s.generateBranchIdentifier(curriculumID, projectType, "MB")
+	case models.ProjectTypeUpperBranch:
+		return s.generateBranchIdentifier(curriculumID, projectType, "UB")
+	case models.ProjectTypeFlowerMilestone:
+		return s.generateSequentialIdentifier(curriculumID, projectType, "F")
+	default:
+		return "", fmt.Errorf("unknown project type: %s", projectType)
+	}
+}
+
+func (s *ProjectService) generateSequentialIdentifier(curriculumID int, projectType, prefix string) (string, error) {
 	query := `
 		SELECT COUNT(*) + 1 
 		FROM projects 
-		WHERE curriculum_id = $1
+		WHERE curriculum_id = $1 AND project_type = $2
 	`
 
 	var nextNum int
-	err := s.db.QueryRow(query, curriculumID).Scan(&nextNum)
+	err := s.db.QueryRow(query, curriculumID, projectType).Scan(&nextNum)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate identifier: %w", err)
 	}
 
-	return fmt.Sprintf("P%d", nextNum), nil
+	return fmt.Sprintf("%s%d", prefix, nextNum), nil
+}
+
+func (s *ProjectService) generateTestIdentifier(curriculumID int, projectType, prefix string) (string, error) {
+	// Check if test project already exists
+	query := `
+		SELECT COUNT(*) 
+		FROM projects 
+		WHERE curriculum_id = $1 AND project_type = $2
+	`
+
+	var count int
+	err := s.db.QueryRow(query, curriculumID, projectType).Scan(&count)
+	if err != nil {
+		return "", fmt.Errorf("failed to check existing test projects: %w", err)
+	}
+
+	if count > 0 {
+		return "", fmt.Errorf("test project of type %s already exists in this curriculum", projectType)
+	}
+
+	return prefix, nil
+}
+
+func (s *ProjectService) generateBranchIdentifier(curriculumID int, projectType, prefix string) (string, error) {
+	// For now, using simple sequential numbering like LB1, LB2, LB3
+	// Can be enhanced later to support grouping like LB1_1, LB1_2, LB2_1, LB2_2
+	query := `
+		SELECT COUNT(*) + 1 
+		FROM projects 
+		WHERE curriculum_id = $1 AND project_type = $2
+	`
+
+	var nextNum int
+	err := s.db.QueryRow(query, curriculumID, projectType).Scan(&nextNum)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate identifier: %w", err)
+	}
+
+	return fmt.Sprintf("%s%d", prefix, nextNum), nil
 }
 
 func (s *ProjectService) validatePrerequisites(curriculumID int, prerequisites []string, currentIdentifier string) error {
@@ -103,8 +165,8 @@ func (s *ProjectService) CreateProject(curriculumID int, req models.CreateProjec
 		return nil, fmt.Errorf("curriculum not found")
 	}
 
-	// Generate identifier
-	identifier, err := s.generateIdentifier(curriculumID)
+	// Generate identifier based on project type
+	identifier, err := s.generateIdentifier(curriculumID, req.ProjectType)
 	if err != nil {
 		return nil, err
 	}

@@ -63,8 +63,8 @@ Authorization: Bearer <your-jwt-token>
       "id": 1,
       "email": "user@example.com",
       "name": "John Doe",
-      "created_at": "2025-05-27T10:00:00Z",
-      "updated_at": "2025-05-27T10:00:00Z"
+      "created_at": "2025-05-30T10:00:00Z",
+      "updated_at": "2025-05-30T10:00:00Z"
     }
   }
 }
@@ -94,8 +94,8 @@ Authorization: Bearer <your-jwt-token>
       "id": 1,
       "email": "user@example.com",
       "name": "John Doe",
-      "created_at": "2025-05-27T10:00:00Z",
-      "updated_at": "2025-05-27T10:00:00Z"
+      "created_at": "2025-05-30T10:00:00Z",
+      "updated_at": "2025-05-30T10:00:00Z"
     }
   }
 }
@@ -116,8 +116,8 @@ Authorization: Bearer <your-jwt-token>
     "id": 1,
     "email": "user@example.com",
     "name": "John Doe",
-    "created_at": "2025-05-27T10:00:00Z",
-    "updated_at": "2025-05-27T10:00:00Z"
+    "created_at": "2025-05-30T10:00:00Z",
+    "updated_at": "2025-05-30T10:00:00Z"
   }
 }
 ```
@@ -151,8 +151,9 @@ Authorization: Bearer <your-jwt-token>
     "user_id": 1,
     "name": "C Programming Mastery",
     "description": "Complete C programming curriculum from basics to advanced",
-    "created_at": "2025-05-27T10:00:00Z",
-    "updated_at": "2025-05-27T10:00:00Z"
+    "created_at": "2025-05-30T10:00:00Z",
+    "updated_at": "2025-05-30T10:00:00Z",
+    "projects": []
   }
 }
 ```
@@ -174,8 +175,8 @@ Authorization: Bearer <your-jwt-token>
       "user_id": 1,
       "name": "C Programming Mastery",
       "description": "Complete C programming curriculum from basics to advanced",
-      "created_at": "2025-05-27T10:00:00Z",
-      "updated_at": "2025-05-27T10:00:00Z",
+      "created_at": "2025-05-30T10:00:00Z",
+      "updated_at": "2025-05-30T10:00:00Z",
       "total_projects": 15,
       "completed_projects": 5,
       "total_time_spent": 1200
@@ -200,8 +201,8 @@ Authorization: Bearer <your-jwt-token>
     "user_id": 1,
     "name": "C Programming Mastery",
     "description": "Complete C programming curriculum from basics to advanced",
-    "created_at": "2025-05-27T10:00:00Z",
-    "updated_at": "2025-05-27T10:00:00Z",
+    "created_at": "2025-05-30T10:00:00Z",
+    "updated_at": "2025-05-30T10:00:00Z",
     "projects": [
       {
         "id": 1,
@@ -214,18 +215,18 @@ Authorization: Bearer <your-jwt-token>
         "prerequisites": [],
         "project_type": "root",
         "position_order": 1,
-        "created_at": "2025-05-27T10:00:00Z",
-        "updated_at": "2025-05-27T10:00:00Z",
+        "created_at": "2025-05-30T10:00:00Z",
+        "updated_at": "2025-05-30T10:00:00Z",
         "progress": {
           "id": 1,
           "user_id": 1,
           "project_id": 1,
           "status": "completed",
           "completion_percentage": 100,
-          "started_at": "2025-05-27T09:00:00Z",
-          "completed_at": "2025-05-27T10:00:00Z",
-          "created_at": "2025-05-27T09:00:00Z",
-          "updated_at": "2025-05-27T10:00:00Z"
+          "started_at": "2025-05-30T09:00:00Z",
+          "completed_at": "2025-05-30T10:00:00Z",
+          "created_at": "2025-05-30T09:00:00Z",
+          "updated_at": "2025-05-30T10:00:00Z"
         }
       }
     ]
@@ -281,7 +282,6 @@ Authorization: Bearer <your-jwt-token>
 
 ```json
 {
-  "identifier": "R1",
   "name": "Hello World Variations",
   "description": "Print patterns, ASCII art, formatted output",
   "learning_objectives": ["printf", "escape sequences", "basic I/O"],
@@ -294,14 +294,16 @@ Authorization: Bearer <your-jwt-token>
 
 **Valid project_type values:**
 
-- `root`
-- `rootTest`
-- `base`
-- `baseTest`
-- `lowerBranch`
-- `middleBranch`
-- `upperBranch`
-- `flowerMilestone`
+- `root` - Foundation projects (generates identifiers: R1, R2, R3...)
+- `rootTest` - Root test project (generates identifier: RT, only one allowed per curriculum)
+- `base` - Core skill projects (generates identifiers: B1, B2, B3...)
+- `baseTest` - Base test project (generates identifier: BT, only one allowed per curriculum)
+- `lowerBranch` - Lower branch projects (generates identifiers: LB1, LB2, LB3...)
+- `middleBranch` - Middle branch projects (generates identifiers: MB1, MB2, MB3...)
+- `upperBranch` - Upper branch projects (generates identifiers: UB1, UB2, UB3...)
+- `flowerMilestone` - Capstone projects (generates identifiers: F1, F2, F3...)
+
+**Note:** The `identifier` field is automatically generated based on the project type and is not included in the request body.
 
 **Response (201):**
 
@@ -319,8 +321,8 @@ Authorization: Bearer <your-jwt-token>
     "prerequisites": [],
     "project_type": "root",
     "position_order": 1,
-    "created_at": "2025-05-27T10:00:00Z",
-    "updated_at": "2025-05-27T10:00:00Z"
+    "created_at": "2025-05-30T10:00:00Z",
+    "updated_at": "2025-05-30T10:00:00Z"
   }
 }
 ```
@@ -339,9 +341,11 @@ Authorization: Bearer <your-jwt-token>
 
 **Headers:** `Authorization: Bearer <token>`
 
-**Request Body:** Same as create project.
+**Request Body:** Same as create project (excluding identifier).
 
 **Response (200):** Same as create response with updated data.
+
+**Note:** The identifier cannot be changed through updates as it's automatically managed.
 
 ### Delete Project
 
@@ -359,6 +363,8 @@ Authorization: Bearer <your-jwt-token>
   }
 }
 ```
+
+**Note:** Projects cannot be deleted if other projects depend on them as prerequisites.
 
 ### Get Project Notes
 
@@ -379,8 +385,8 @@ Authorization: Bearer <your-jwt-token>
       "title": "Initial thoughts",
       "content": "This project was straightforward but taught me the basics of printf formatting.",
       "note_type": "reflection",
-      "created_at": "2025-05-27T10:00:00Z",
-      "updated_at": "2025-05-27T10:00:00Z"
+      "created_at": "2025-05-30T10:00:00Z",
+      "updated_at": "2025-05-30T10:00:00Z"
     }
   ]
 }
@@ -407,11 +413,11 @@ Authorization: Bearer <your-jwt-token>
 
 **Valid status values:**
 
-- `not_started`
-- `in_progress`
-- `completed`
-- `on_hold`
-- `abandoned`
+- `not_started` - Project not yet started (completion_percentage automatically set to 0)
+- `in_progress` - Project currently being worked on
+- `completed` - Project finished (completion_percentage automatically set to 100)
+- `on_hold` - Project temporarily paused
+- `abandoned` - Project discontinued
 
 **Response (200):**
 
@@ -424,10 +430,10 @@ Authorization: Bearer <your-jwt-token>
     "project_id": 1,
     "status": "in_progress",
     "completion_percentage": 75,
-    "started_at": "2025-05-27T09:00:00Z",
+    "started_at": "2025-05-30T09:00:00Z",
     "completed_at": null,
-    "created_at": "2025-05-27T09:00:00Z",
-    "updated_at": "2025-05-27T10:00:00Z"
+    "created_at": "2025-05-30T09:00:00Z",
+    "updated_at": "2025-05-30T10:00:00Z"
   }
 }
 ```
@@ -439,6 +445,8 @@ Authorization: Bearer <your-jwt-token>
 **Headers:** `Authorization: Bearer <token>`
 
 **Response (200):** Same as update progress response.
+
+**Note:** If no progress exists, returns default progress with `not_started` status.
 
 ### Get Curriculum Progress
 
@@ -458,10 +466,10 @@ Authorization: Bearer <your-jwt-token>
       "project_id": 1,
       "status": "completed",
       "completion_percentage": 100,
-      "started_at": "2025-05-27T09:00:00Z",
-      "completed_at": "2025-05-27T10:00:00Z",
-      "created_at": "2025-05-27T09:00:00Z",
-      "updated_at": "2025-05-27T10:00:00Z"
+      "started_at": "2025-05-30T09:00:00Z",
+      "completed_at": "2025-05-30T10:00:00Z",
+      "created_at": "2025-05-30T09:00:00Z",
+      "updated_at": "2025-05-30T10:00:00Z"
     }
   ]
 }
@@ -489,10 +497,10 @@ Authorization: Bearer <your-jwt-token>
 
 **Valid note_type values:**
 
-- `note`
-- `reflection`
-- `learning`
-- `question`
+- `note` - General notes
+- `reflection` - Learning reflections
+- `learning` - Learning insights
+- `question` - Questions and clarifications
 
 **Response (201):**
 
@@ -506,8 +514,8 @@ Authorization: Bearer <your-jwt-token>
     "title": "Initial thoughts",
     "content": "This project was straightforward but taught me the basics of printf formatting.",
     "note_type": "reflection",
-    "created_at": "2025-05-27T10:00:00Z",
-    "updated_at": "2025-05-27T10:00:00Z"
+    "created_at": "2025-05-30T10:00:00Z",
+    "updated_at": "2025-05-30T10:00:00Z"
   }
 }
 ```
@@ -564,7 +572,7 @@ Authorization: Bearer <your-jwt-token>
   "project_id": 1,
   "minutes": 60,
   "description": "Worked on hello world variations",
-  "date": "2025-05-27"
+  "date": "2025-05-30"
 }
 ```
 
@@ -579,8 +587,8 @@ Authorization: Bearer <your-jwt-token>
     "project_id": 1,
     "minutes": 60,
     "description": "Worked on hello world variations",
-    "date": "2025-05-27T00:00:00Z",
-    "created_at": "2025-05-27T10:00:00Z"
+    "date": "2025-05-30T00:00:00Z",
+    "created_at": "2025-05-30T10:00:00Z"
   }
 }
 ```
@@ -603,8 +611,8 @@ Authorization: Bearer <your-jwt-token>
       "project_id": 1,
       "minutes": 60,
       "description": "Worked on hello world variations",
-      "date": "2025-05-27T00:00:00Z",
-      "created_at": "2025-05-27T10:00:00Z"
+      "date": "2025-05-30T00:00:00Z",
+      "created_at": "2025-05-30T10:00:00Z"
     }
   ]
 }
@@ -624,9 +632,9 @@ Authorization: Bearer <your-jwt-token>
   "data": {
     "total_minutes": 300,
     "daily_breakdown": {
-      "2025-05-27": 60,
-      "2025-05-26": 120,
-      "2025-05-25": 120
+      "2025-05-30": 60,
+      "2025-05-29": 120,
+      "2025-05-28": 120
     },
     "project_breakdown": {
       "Hello World Variations": 60,
@@ -666,7 +674,7 @@ Authorization: Bearer <your-jwt-token>
 
 ## Health Check
 
-### Health Checker
+### Health Check Endpoint
 
 **GET** `/health`
 
@@ -675,6 +683,30 @@ Authorization: Bearer <your-jwt-token>
 ```md
 OK
 ```
+
+---
+
+## Project Identifier System
+
+The system automatically generates identifiers based on project type:
+
+| Project Type | Identifier Pattern | Example | Notes |
+|--------------|-------------------|---------|-------|
+| `root` | R1, R2, R3... | R1, R2, R3 | Foundation projects |
+| `rootTest` | RT | RT | Only one allowed per curriculum |
+| `base` | B1, B2, B3... | B1, B2, B3 | Core skill projects |
+| `baseTest` | BT | BT | Only one allowed per curriculum |
+| `lowerBranch` | LB1, LB2, LB3... | LB1, LB2, LB3 | Lower specialization |
+| `middleBranch` | MB1, MB2, MB3... | MB1, MB2, MB3 | Middle specialization |
+| `upperBranch` | UB1, UB2, UB3... | UB1, UB2, UB3 | Upper specialization |
+| `flowerMilestone` | F1, F2, F3... | F1, F2, F3 | Capstone projects |
+
+**Important Notes:**
+
+- Identifiers are automatically generated and cannot be manually set
+- Test projects (`rootTest`, `baseTest`) can only have one instance per curriculum
+- Each project type maintains its own counter within a curriculum
+- Identifiers are used in the `prerequisites` array to reference other projects
 
 ---
 
@@ -693,6 +725,8 @@ Create a `.env` file in the project root:
 DATABASE_URL=postgres://username:password@localhost:5432/curriculum_tracker?sslmode=disable
 JWT_SECRET=your-super-secret-jwt-key-change-in-production
 PORT=8080
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+ENVIRONMENT=development
 ```
 
 ### Database Setup
@@ -711,55 +745,44 @@ The server will start on `http://localhost:8080`
 
 ---
 
+## Security Features
+
+- **Argon2 Password Hashing**: Industry-standard password security
+- **JWT Authentication**: Secure token-based authentication with 24-hour expiration
+- **SQL Injection Prevention**: All queries use parameterized statements
+- **User Isolation**: All data access is scoped to the authenticated user
+- **CORS Configuration**: Configurable cross-origin resource sharing
+
+---
+
 ## Frontend Integration Notes
 
 ### Authentication Flow
 
 1. Register or login to get JWT token
 2. Store token securely (localStorage/sessionStorage)
-3. Include token in all API requests
+3. Include token in all API requests as `Authorization: Bearer <token>`
 4. Handle token expiration (24 hours by default)
 
-### Recommended Frontend Structure
+### Project Creation Workflow
 
-```md
-components/
-├── auth/
-│   ├── LoginForm.jsx
-│   ├── RegisterForm.jsx
-│   └── ProtectedRoute.jsx
-├── curriculum/
-│   ├── CurriculumList.jsx
-│   ├── CurriculumDetail.jsx
-│   └── CreateCurriculum.jsx
-├── project/
-│   ├── ProjectCard.jsx
-│   ├── ProjectDetail.jsx
-│   └── ProgressTracker.jsx
-├── notes/
-│   ├── NotesList.jsx
-│   ├── NoteEditor.jsx
-│   └── NoteViewer.jsx
-└── analytics/
-    ├── TimeTracker.jsx
-    ├── StatsOverview.jsx
-    └── ProgressCharts.jsx
-```
+1. Create a curriculum first
+2. Add projects to the curriculum with appropriate types
+3. Use generated identifiers in prerequisites arrays
+4. Track progress and add notes as needed
+5. Log time entries for analytics
 
-### Key Features to Implement
+### Key Integration Points
 
-- Curriculum tree visualization
-- Progress tracking with visual indicators
-- Time tracking with charts
-- Note-taking with rich text editor
-- Project dependencies visualization
-- Analytics dashboard with charts
-- Search and filtering
-- Export functionality
+- **Automatic Identifiers**: Don't include `identifier` in project creation requests
+- **Test Project Limits**: Handle errors when trying to create duplicate test projects
+- **Prerequisites Validation**: Use existing project identifiers in prerequisites arrays
+- **Progress States**: Implement UI states for all progress statuses
+- **Real-time Updates**: Consider implementing optimistic updates for better UX
 
 ### State Management Recommendations
 
-- Use React Context or Redux for global state
-- Cache curriculum/project data
-- Implement optimistic updates for better UX
-- Handle offline scenarios
+- Cache curriculum/project data for better performance
+- Implement optimistic updates for progress tracking
+- Handle prerequisite dependencies in project visualization
+- Show identifier patterns to help users understand the system
